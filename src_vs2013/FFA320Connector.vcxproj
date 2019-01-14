@@ -147,7 +147,7 @@
       <AdditionalDependencies>Opengl32.lib;odbc32.lib;odbccp32.lib;XPLM_64.lib;XPWidgets_64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(TargetDir)win.xpl" "$(SolutionDir)..\bin\FFA320Connector\64\win.xpl"</Command>
+      <Command>xcopy /Y "$(TargetDir)win.xpl" "$(SolutionDir)..\bin\FFA320Connector\64\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
