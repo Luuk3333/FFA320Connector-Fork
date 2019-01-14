@@ -141,6 +141,9 @@
       <AdditionalLibraryDirectories>SDK\Libraries\Win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Opengl32.lib;odbc32.lib;odbccp32.lib;XPLM_64.lib;XPWidgets_64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy /Y "$(TargetDir)win.xpl" "$(SolutionDir)..\bin\FFA320Connector\64\win.xpl"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="FFA320Connector.cpp" />

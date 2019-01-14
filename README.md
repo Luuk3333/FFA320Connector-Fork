@@ -8,24 +8,15 @@ You can define your own commands and datarefs in the config.cfg.
 
 If you are not interested in the source code and you just
 want to download the compiled version, visit this link:
-https://github.com/Luuk3333/FFA320Connector/releases
+https://github.com/Luuk3333/FFA320Connector/releases. Download the .zip, extract it and copy the 'FFA320Connector' folder to the FFA320's plugin folder.
 
-## Download Nightly Builds
-
-If you want to get the absolutely latest build, click "Clone or Download" and then "Download ZIP"
-Put the FFA320Connector folder from the bin directory into your A320's Plugins folder.
-
-## Installation
-
-The folder FFA320Connector must be placed in the 
-''X-Plane\Aircrafts\A320\plugins'' folder. 
-
-## Building the FFA320 Connector on Windows
-
+## Build Instructions
+### On Windows
 To build the FFA320 Connector, you need Visual C++ 2013 or
-later.
-
-## Building the FFA320 Connector on MacOS
-
+later. Installing Visual Studio 2013 is recommended.
+### On MacOS
 To build the FFA320 Connector on MacOS, you need Xcode 8.1
 or higher. C++11 compiler is required.
+
+### Installing
+When building with Visual Studio or Xcode the .xpl file will be copied to /bin/FFA320Connector/64. To install the built plugin, copy the /bin/FFA320Connector folder to the FFA320's plugin folder.

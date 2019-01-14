@@ -375,4 +375,5 @@ healthchecksdb
 ### Other ###
 .DS_Store
 !/bin/
+/bin/FFA320Connector/64/*
 !SDK/
