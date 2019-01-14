@@ -373,5 +373,6 @@ ASALocalRun/
 healthchecksdb
 
 ### Other ###
+.DS_Store
 !/bin/
 !SDK/
