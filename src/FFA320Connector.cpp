@@ -417,7 +417,7 @@ PLUGIN_API int XPluginStart(
 	g_menu_id = XPLMCreateMenu(menu_title.c_str(), XPLMFindPluginsMenu(), g_menu_container_idx, menu_handler, NULL);
 	XPLMAppendMenuItem(g_menu_id, "Reload Config", (void *)"Reload Config", 1);
 	XPLMAppendMenuSeparator(g_menu_id);
-	XPLMAppendMenuItem(g_menu_id, "Debug-Logging On/Off", (void *)"Debug-Logging On/Off", 1);
+	XPLMAppendMenuItem(g_menu_id, "Debug logging", (void *)"Debug logging", 1);
 	XPLMAppendMenuItem(g_menu_id, "Dump A320-Objects to Log.txt", (void *)"Dump A320-Objects to Log.txt", 1);
 	XPLMAppendMenuItem(g_menu_id, "Dump Commands to Log.txt", (void *)"Dump Commands to Log.txt", 1);
 	XPLMAppendMenuItem(g_menu_id, "Dump Datarefs to Log.txt", (void *)"Dump Datarefs to Log.txt", 1);
@@ -453,15 +453,17 @@ void menu_handler(void * in_menu_ref, void * in_item_ref)
 		LogWrite("==== FFA320 Connector / Reloaded Config ====");
 		ReadConfigs();
 	}
-	if (!strcmp((const char *)in_item_ref, "Debug-Logging On/Off"))
+	if (!strcmp((const char *)in_item_ref, "Debug logging"))
 	{
 		if (debugmode) {
-			LogWrite("==== FFA320 Connector / Debug-Logging DISABLED ====");
+			LogWrite("==== FFA320 Connector / Debug logging DISABLED ====");
 			debugmode = false;
+			XPLMCheckMenuItem(g_menu_id, 2 /* third menu item */, xplm_Menu_Unchecked);	// Uncheck menu item
 		}
 		else {
-			LogWrite("==== FFA320 Connector / Debug-Logging ENABLED ====");
+			LogWrite("==== FFA320 Connector / Debug logging ENABLED ====");
 			debugmode = true;
+			XPLMCheckMenuItem(g_menu_id, 2 /* third menu item */, xplm_Menu_Checked);	// Check menu item
 		}
 	}
 	if (!strcmp((const char *)in_item_ref, "Dump A320-Objects to Log.txt"))
