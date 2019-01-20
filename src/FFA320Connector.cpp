@@ -824,7 +824,7 @@ void ReadConfig(string filename) {
 						if (NewObj.DataRef == "NORM") {
 							string normdref = NewObj.FFVar;
 							replace(normdref.begin(), normdref.end(), '.', '/');
-							NewObj.DataRef = "MOKNY/FFA320/" + normdref;
+							NewObj.DataRef = "FFA320Connector/" + normdref;
 						}
 					}
 
@@ -858,7 +858,7 @@ void ReadConfig(string filename) {
 						if (NewObj.DataRef == "NORM") {
 							string normdref = NewObj.FFVar;
 							replace(normdref.begin(), normdref.end(), '.', '/');
-							NewObj.DataRef = "MOKNY/FFA320/" + normdref;
+							NewObj.DataRef = "FFA320Connector/" + normdref;
 						}
 					}
 
@@ -1070,7 +1070,7 @@ void ReadConfig(string filename) {
 				if (NewObj.DataRef == "NORM") {
 					string normdref = NewObj.FFVar;
 					replace(normdref.begin(), normdref.end(), '.', '/');
-					NewObj.DataRef = "MOKNY/FFA320/" + normdref;
+					NewObj.DataRef = "FFA320Connector/" + normdref;
 				}
 			}
 
@@ -1187,7 +1187,7 @@ void ReadConfig(string filename) {
 							if (NewObj.DataRef == "NORM") {
 								string normdref = NewObj.FFVar;
 								replace(normdref.begin(), normdref.end(), '.', '/');
-								NewObj.DataRef = "MOKNY/FFA320/" + normdref;
+								NewObj.DataRef = "FFA320Connector/" + normdref;
 							}
 
 							if (i == 8) NewObj.DatarefCondition = StringToCondition(token);
