@@ -25,10 +25,11 @@
 #include <iostream>
 #include <fstream>
 #include "SharedValue.h"
+#include <regex> 
 
 using namespace std;
 
-string					pluginversion = "1.1.6";																			// Plugin-Version
+string					pluginversion = "1.1.7";																			// Plugin-Version
 
 string					pluginpath;
 string					aircraftpath;
@@ -87,6 +88,8 @@ bool					DumpObjectsToLogActive = false;
 void					DumpObjectsToLog();																					//Constructor
 void					DumpCommandsToLog();																				//Constructor
 void					DumpDatarefsToLog();																				//Constructor
+
+string					trim(const string& str);																			// Trims string
 
 /*
 * StringToObjectType
@@ -773,8 +776,9 @@ void ReadConfigs() {
 void ReadConfig(string filename) {
 	
 	ifstream input(filename.c_str());
+	ifstream input2(filename.c_str());	// used for old format
 
-	if (!input)
+	if (!input || !input2)
 	{
 		LogWrite(" -> ==== ERROR: COULD NOT READ " + filename + " ===");
 		return;
@@ -786,20 +790,317 @@ void ReadConfig(string filename) {
 	string line;
 	int objcounter = 0;
 	int datarefcounter = 0;
+	int resultCount[] = {0, 0, 0};	// Keep track on how many commands, comdefs and datarefs have been added.
+	regex re_category("^\\[([a-zA-z\\.]*)\\]$"); // https://regex101.com/r/y1plMJ/1
+	regex re_setting("^([a-zA-Z\\._-]*)=(.*)$"); // https://regex101.com/r/tDwwrN/1
+	bool entryNeedsToBeAdded = false;
+	DataObject NewObj;
+	int lineNumber = 0;
+
 	while (std::getline(input, line))
 	{
+		lineNumber++;
+		smatch matches;
+
+		// Format introduced with version 1.1.7.
+		// Match anything between square brackets (start of an entry), for example [DATAREF] or [COMMAND].
+		if (line.empty()) {
+			// Add entry (new line ends previous entry)
+			if (NewObj.Type != -1) {
+				if (!NewObj.SyntaxError) {
+					if (NewObj.Type == OBJECT_TYPE_COMMAND)
+					{
+						resultCount[0]++;
+
+						if (NewObj.FFReference == "" && NewObj.FFReferenceID == -1) {
+							NewObj.FFReference = NewObj.FFVar;
+						}
+					}
+					else if (NewObj.Type == OBJECT_TYPE_COMMANDTODATAREF) resultCount[1]++;
+					else if (NewObj.Type == OBJECT_TYPE_DATAREF)
+					{
+						resultCount[2]++;
+
+						if (NewObj.DataRef == "NORM") {
+							string normdref = NewObj.FFVar;
+							replace(normdref.begin(), normdref.end(), '.', '/');
+							NewObj.DataRef = "MOKNY/FFA320/" + normdref;
+						}
+					}
+
+					// Add entry
+					NewObj.RefConID = datarefcounter++;
+					NewObj.initialize();
+					DataObjects.push_back(NewObj);
+				}
+
+				NewObj.Type = -1;
+			}
+
+		}
+		else if (regex_search(line, matches, re_category)) {
+			// Add entry (new entry ends previous entry)
+			if (NewObj.Type != -1) {
+				if (!NewObj.SyntaxError) {
+					if (NewObj.Type == OBJECT_TYPE_COMMAND)
+					{
+						resultCount[0]++;
+
+						if (NewObj.FFReference == "" && NewObj.FFReferenceID == -1) {
+							NewObj.FFReference = NewObj.FFVar;
+						}
+					}
+					else if (NewObj.Type == OBJECT_TYPE_COMMANDTODATAREF) resultCount[1]++;
+					else if (NewObj.Type == OBJECT_TYPE_DATAREF)
+					{
+						resultCount[2]++;
+
+						if (NewObj.DataRef == "NORM") {
+							string normdref = NewObj.FFVar;
+							replace(normdref.begin(), normdref.end(), '.', '/');
+							NewObj.DataRef = "MOKNY/FFA320/" + normdref;
+						}
+					}
+
+					// Add entry
+					NewObj.RefConID = datarefcounter++;
+					NewObj.initialize();
+					DataObjects.push_back(NewObj);
+				}
+
+				NewObj.Type = -1;
+			}
+
+			NewObj = DataObject();	// Create a new Data Object for the Command / Dataref
+			NewObj.Type = StringToObjectType(matches[1].str());
+			entryNeedsToBeAdded = true;
+
+			// Set default values
+			NewObj.DataRefMultiplier = 1;
+			NewObj.SyntaxError = false;
+			NewObj.IgnoreExistingDataRef = false;
+			NewObj.DataRef = "NORM";
+			NewObj.Phase = 0;
+
+			NewObj.FFVar = "";
+			NewObj.FFID = -1;
+			NewObj.FFReference = "";
+			NewObj.FFReferenceID = -1;
+
+			NewObj.ValueType = StringToValueType("INT");
+			NewObj.Value = 1;
+			NewObj.MinValue = 0;
+			NewObj.MaxValue = 0;
+
+			NewObj.SpeedRef = 0;
+		}
+
+		// Get a setting from command, dataref or comdef entry if it matches
+		if (regex_search(line, matches, re_setting)) {
+			string key = trim(matches[1].str());
+			string value = trim(matches[2].str());
+
+			if (key.length() == 0 || value.length() == 0) {
+				LogWrite("Error: Invalid syntax. (File: '" + filename + "', line: " + to_string(lineNumber) + ")");
+				NewObj.SyntaxError = true;
+			}
+
+			if (NewObj.Type == OBJECT_TYPE_COMMAND)
+			{
+				if (key == "MODE") {
+					NewObj.WorkMode = StringToWorkMode(value);
+				}
+				else if (key == "TYPE") {
+					NewObj.ValueType = StringToValueType(value);
+				}
+				else if (key == "OBJECT") {
+					NewObj.FFVar = value;
+				}
+				else if (key == "COMMAND") {
+					NewObj.Command = value;
+				}
+				else if (key == "COMMAND_NAME") {
+					NewObj.CommandName = value;
+				}
+				else if (key == "VALUE") {
+					if (NewObj.ValueType == VALUE_TYPE_INT) NewObj.Value = stoi(value);
+					if (NewObj.ValueType == VALUE_TYPE_FLOAT) NewObj.ValueFloat = stof(value);
+				}
+				else if (key == "OBJECT_ID") {
+					NewObj.FFID = stoi(value); // FlightFactor Object ID
+				}
+				else if (key == "OBJECT_REFERENCE") {
+					NewObj.FFReference = value; // FlightFactor Object Reference
+				}
+				else if (key == "OBJECT_REFERENCE_ID") {
+					NewObj.FFReferenceID = stoi(value); // FlightFactor Object ReferenceID
+				}
+				else if (key == "VALUE_MINIMUM") {
+					if (NewObj.ValueType == VALUE_TYPE_INT) NewObj.MinValue = stoi(value);
+					if (NewObj.ValueType == VALUE_TYPE_FLOAT) NewObj.MinValueFloat = stof(value);
+				}
+				else if (key == "VALUE_MAXIMUM") {
+					if (NewObj.ValueType == VALUE_TYPE_INT) NewObj.MaxValue = stoi(value);
+					if (NewObj.ValueType == VALUE_TYPE_FLOAT) NewObj.MaxValueFloat = stof(value);
+				}
+				else if (key == "SPEED") {
+					NewObj.SpeedRef = stoi(value);
+				}
+				else if (key == "PHASE") {
+					if (value == "SINGLE_CLICK") NewObj.Phase = 0;
+					if (value == "CONTINUOUS") NewObj.Phase = 1;
+				}
+
+				NewObj.NeedsUpdate = false;
+			}
+			else if (NewObj.Type == OBJECT_TYPE_COMMANDTODATAREF)
+			{
+				if (key == "MODE") {
+					NewObj.WorkMode = StringToWorkMode(value);
+				}
+				else if (key == "TYPE") {
+					NewObj.ValueType = StringToValueType(value);
+				}
+				else if (key == "PHASE") {
+					if (value == "SINGLE_CLICK") NewObj.Phase = 0;
+					if (value == "CONTINUOUS") NewObj.Phase = 1;
+				}
+				else if (key == "COMMAND") {
+					NewObj.Command = value;
+				}
+				else if (key == "COMMAND_NAME") {
+					NewObj.CommandName = value;
+				}
+				else if (key == "DATAREF") {
+					NewObj.DataRef = value;
+				}
+				else if (key == "VALUES") {
+
+					// Split value by comma using regex.
+					regex re("([^,]+)");
+
+					int j = 0;
+
+					for (sregex_iterator i = sregex_iterator(value.begin(), value.end(), re);
+						i != sregex_iterator();
+						++i)
+					{
+						smatch match = *i;
+
+						if (j == 0) {
+							if (NewObj.ValueType == VALUE_TYPE_INT) NewObj.Value = stoi(match.str());
+							if (NewObj.ValueType == VALUE_TYPE_FLOAT) NewObj.ValueFloat = stof(match.str());
+						}
+
+						if (NewObj.ValueType == VALUE_TYPE_INT) NewObj.VarArrI[j] = stoi(match.str());
+						if (NewObj.ValueType == VALUE_TYPE_FLOAT) NewObj.VarArrF[j] = stof(match.str());
+
+						NewObj.VarArrValues++;
+						j++;
+					}
+				}
+
+				NewObj.NeedsUpdate = false;
+			}
+			else if (NewObj.Type == OBJECT_TYPE_DATAREF)
+			{
+				if (key == "TYPE") {
+					NewObj.ValueType = StringToValueType(value);
+				}
+				else if (key == "OBJECT") {
+					NewObj.FFVar = value;
+				}
+				else if (key == "OBJECT_ID") {
+					NewObj.FFID = stoi(value); // FlightFactor Object ID
+				}
+				else if (key == "DATAREF") {
+					size_t first = value.find("[");
+					size_t last = value.find("]");
+
+					if ((first != string::npos) && (first != string::npos)) {
+						NewObj.DataRefOffset = stoi(value.substr(first + 1, last - first - 1));
+						NewObj.DataRef = value.substr(0, first);
+						DebugOut("ARRAY: " + NewObj.DataRef + " -> " + to_string(NewObj.DataRefOffset) + " -> " + to_string(first) + " " + to_string(last));
+					}
+					else {
+						NewObj.DataRef = value;
+					}
+				}
+				else if (key == "DATAREF_TYPE") {
+					NewObj.DataRefValueType = StringToValueType(value);
+				}
+				else if (key == "IGNORE_EXISTING") {
+					if (value == "TRUE") NewObj.IgnoreExistingDataRef = true;
+				}
+				else if (key == "MULTIPLIER" && value != "") {
+					NewObj.DataRefMultiplier = stof(value);
+				}
+				else if (key == "CONDITION")  {
+					NewObj.DatarefCondition = StringToCondition(value);
+				}
+				else if (key == "CONDITION_VALUE") {
+					NewObj.DatarefConditionValue = stof(value);
+				}
+				else if (key == "CONDITION_RESULT") {
+					if (NewObj.DataRefValueType == VALUE_TYPE_INT) NewObj.Value = stoi(value);
+					if (NewObj.DataRefValueType == VALUE_TYPE_FLOAT) NewObj.ValueFloat = stof(value);
+				}
+
+				NewObj.NeedsUpdate = true;
+			}
+		}
+	}
+
+	// Make sure the last entry will be added in case there's no new line next.
+	if (NewObj.Type != -1) {
+		if (!NewObj.SyntaxError) {
+			if (NewObj.Type == OBJECT_TYPE_COMMAND)
+			{
+				resultCount[0]++;
+
+				if (NewObj.FFReference == "" && NewObj.FFReferenceID == -1) {
+					NewObj.FFReference = NewObj.FFVar;
+				}
+			}
+			else if (NewObj.Type == OBJECT_TYPE_COMMANDTODATAREF) resultCount[1]++;
+			else if (NewObj.Type == OBJECT_TYPE_DATAREF)
+			{
+				resultCount[2]++;
+
+				if (NewObj.DataRef == "NORM") {
+					string normdref = NewObj.FFVar;
+					replace(normdref.begin(), normdref.end(), '.', '/');
+					NewObj.DataRef = "MOKNY/FFA320/" + normdref;
+				}
+			}
+
+			// Add entry
+			NewObj.RefConID = datarefcounter++;
+			NewObj.initialize();
+			DataObjects.push_back(NewObj);
+		}
+
+		NewObj.Type = -1;
+	}
+
+	// format version <= 1.1.6
+	lineNumber = 0;
+	while (std::getline(input2, line))
+	{
+		lineNumber++;
 		objcounter++;
 		int i = 0;
 
+		// If line is not a comment
 		if (line.substr(0, 1) != "#") {
 			if (line.find(";") > 4) {
 				string s = line;
 				string delimiter = ";";
 
 				size_t pos = 0;
-				string token;		// Each token between ";"
+				string token;	// Each token between ";" (this is the variable 'value' in the new format)
 
-				DataObject NewObj;	// Create a new Data Object for the Command / Dataref
+				DataObject NewObj = DataObject();		// Create a new Data Object for the Command / Dataref
 
 				NewObj.DataRefMultiplier = 1;	// Sets the Multiplier to 1 - may be changed later on
 				NewObj.SyntaxError = false;
@@ -919,12 +1220,31 @@ void ReadConfig(string filename) {
 						NewObj.RefConID = datarefcounter++;
 						NewObj.initialize();
 						DataObjects.push_back(NewObj);
+
+						// Deprecated warning message
+						LogWrite("Warning: This entry looks like the previous format which is now deprecated and will be removed in the future. Please use the format introduced with version 1.1.7. (File: '" + filename + "', line: " + to_string(lineNumber) + ")");
+					
+						if (NewObj.Type == OBJECT_TYPE_COMMAND) resultCount[0]++;
+						if (NewObj.Type == OBJECT_TYPE_COMMANDTODATAREF) resultCount[1]++;
+						if (NewObj.Type == OBJECT_TYPE_DATAREF) resultCount[2]++;
 					}
 				}
 			}
 		}
 	}
-	
+
+	LogWrite("Found " + to_string(resultCount[0]) + " COMMANDs, " + to_string(resultCount[1]) + " COMDEFs and " + to_string(resultCount[2]) + " DATAREFs in the file '" + filename + "'.");
+}
+
+// Trim string
+string trim(const string& str)
+{
+	size_t first = str.find_first_not_of(' ');
+	if (string::npos == first) {
+		return str;
+	}
+	size_t last = str.find_last_not_of(' ');
+	return str.substr(first, (last - first + 1));
 }
 
 /*
