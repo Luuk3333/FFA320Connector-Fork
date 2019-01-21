@@ -26,6 +26,7 @@
 #include <fstream>
 #include "SharedValue.h"
 #include <regex> 
+#include "dirent.h"
 
 using namespace std;
 
@@ -62,8 +63,7 @@ const int				CONDITION_LOWER_EQUAL = 14;
 bool					plugindisabled = false;																				// True if plugin is disabled
 bool					plugininitialized = false;																			// Plugin Initialized? Set when Flightloop was called.
 
-bool					defaultconfigfound = false;
-bool					customconfigfound = false;
+vector<string> filenames;
 
 XPLMPluginID			ffPluginID = XPLM_NO_PLUGIN_ID;
 SharedValuesInterface	ffAPI;
@@ -197,8 +197,6 @@ inline bool file_exists(const std::string& name) {
 */
 void get_paths() {
 	LogWrite("Fetching Paths");
-	defaultconfigfound = false;
-	customconfigfound = false;
 
 	defaultconfigpath = "";
 	customconfigpath = "";
@@ -210,7 +208,9 @@ void get_paths() {
 	char cacfilename[256] = { 0 };
 	char cacpath[1024] = { 0 };
 
-	// CONFIG.CFG
+	string configFileDirectory;
+
+	// Get config file directory
 	XPLMGetNthAircraftModel(0, cacfilename, cacpath);
 	XPLMExtractFileAndPath(cacpath);
 	strcpy(FileNamePath, cacpath);
@@ -218,36 +218,49 @@ void get_paths() {
 	strcat(FileNamePath, "plugins");
 	strcat(FileNamePath, XPLMGetDirectorySeparator());
 	strcat(FileNamePath, "FFA320Connector");
-	strcat(FileNamePath, XPLMGetDirectorySeparator());
-	strcat(FileNamePath, "config.cfg");
-	defaultconfigpath = string(FileNamePath);
+	configFileDirectory = string(FileNamePath);
 
-	LogWrite("-> Searching Default Config at: " + defaultconfigpath);
+	// Search .cfg config files
+	LogWrite("-> Searching for config files in the directory '" + configFileDirectory + "'.");
 
-	// CUSTOM.CFG
-	XPLMGetNthAircraftModel(0, cacfilename, cacpath);
-	XPLMExtractFileAndPath(cacpath);
-	strcpy(FileNamePath, cacpath);
-	strcat(FileNamePath, XPLMGetDirectorySeparator());
-	strcat(FileNamePath, "plugins");
-	strcat(FileNamePath, XPLMGetDirectorySeparator());
-	strcat(FileNamePath, "FFA320Connector");
-	strcat(FileNamePath, XPLMGetDirectorySeparator());
-	strcat(FileNamePath, "custom.cfg");
-	customconfigpath = string(FileNamePath);
+	DIR *dir;
+	struct dirent *ent;
+	if ((dir = opendir(FileNamePath)) != NULL) {
+		/* Get all files and directories */
+		regex re_config_file("\\.cfg$");
+		smatch matches;
 
-	LogWrite("-> Searching Custom Config at: " + customconfigpath);
+		while ((ent = readdir(dir)) != NULL) {
+			// Match all .cfg files
+			if (regex_search(string(ent->d_name), matches, re_config_file)) {
+				// Config file found
+				filenames.push_back(configFileDirectory + XPLMGetDirectorySeparator() + string(ent->d_name));
+			}
+		}
 
-	/* Check in Aircraft Plugins folder */
+		closedir(dir);
+	}
+	else {
+		/* Could not open directory */
+		LogWrite("#####################################################");
+		LogWrite("# Could not open directory '" + configFileDirectory + "' to search for .cfg config files.");
+		LogWrite("#####################################################");
+	}
 
-	if (file_exists(defaultconfigpath)) defaultconfigfound = true;
-	if (file_exists(customconfigpath)) customconfigfound = true;
-
-
-	if (!defaultconfigfound && !customconfigfound) {
+	switch (filenames.size()) {
+	case 0:
+		// Check if there is at least one .cfg file
 		LogWrite("#####################################################");
 		LogWrite("# MISSING CONFIG FILES!                             #");
+		LogWrite("# No .cfg config files have been found in the directory '" + configFileDirectory + "'.");
 		LogWrite("#####################################################");
+		break;
+	case 1:
+		LogWrite("Found 1 config file.");
+		break;
+	default:
+		LogWrite("Found " + to_string(filenames.size()) + " config files.");
+		break;
 	}
 }
 
@@ -762,8 +775,8 @@ void ReadConfigs() {
 	}
 	DataObjects.clear();
 
-	if (defaultconfigfound == true) ReadConfig(defaultconfigpath);
-	if (customconfigfound == true) ReadConfig(customconfigpath);
+	// Read each config file
+	for_each(filenames.begin(), filenames.end(), &ReadConfig);
 
 	LogWrite("Reload complete.");
 }

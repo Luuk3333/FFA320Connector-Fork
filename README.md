@@ -10,6 +10,9 @@ If you are not interested in the source code and you just
 want to download the compiled version, visit this link:
 https://github.com/Luuk3333/FFA320Connector/releases. Download the .zip, extract it and copy the 'FFA320Connector' folder to the FFA320's plugin folder.
 
+## Config files
+You can define your own command, comdef and dataref entries in a new '.cfg' config file in the same directory as the 'config.cfg' file.
+
 ## Build Instructions
 ### On Windows
 To build the FFA320 Connector, you need Visual C++ 2013 or

@@ -110,7 +110,7 @@
       <Optimization>Disabled</Optimization>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <DebugInformationFormat>OldStyle</DebugInformationFormat>
-      <AdditionalIncludeDirectories>"$(SolutionDir)..\src\SDK\CHeaders\XPLM";"$(SolutionDir)..\src\SDK\CHeaders\Widgets";%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)include\dirent;$(SolutionDir)..\src\SDK\CHeaders\XPLM;$(SolutionDir)..\src\SDK\CHeaders\Widgets;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;SIMDATA_EXPORTS;IBM=1;XPLM200=1;XPLM210=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AssemblerListingLocation>.\Debug\64\</AssemblerListingLocation>
       <PrecompiledHeaderOutputFile>.\Debug\64\Custom-Command-with-Custom-DataRef.pch</PrecompiledHeaderOutputFile>
